@@ -1,14 +1,14 @@
-import qbittorrentapi
-import rich
-from platformdirs import *
-from pathlib import Path, PurePath
-import yaml
 import argparse
 import io
-import time
+import math
+from pathlib import Path, PurePath
+
+import qbittorrentapi
+import rich
+import yaml
+from platformdirs import *
 from rich.live import Live
 from rich.table import Table
-import math
 
 DEFAULT_CONFIG_PATH = site_config_dir("TorrentClientManager")
 
@@ -108,10 +108,7 @@ class QBIT():
         pass
 
 
-
-
-
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(
     prog='Torrent Client Manager',
     description='CLI Tool to help you manage your torrents.',
@@ -138,3 +135,9 @@ if __name__ == "__main__":
     rich.print(f"[bold blue]Torrents detected : [bold red]{len(status['torrents_info'])}")
     
     qbit.clean_torrents(config=init_config(),dry_run=True)
+
+
+
+if __name__ == "__main__":
+    main()
+    

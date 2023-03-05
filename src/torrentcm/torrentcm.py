@@ -128,13 +128,13 @@ def main():
         rich.print("[bold red]Exiting...")
         exit()
     
-    qbit = QBIT(host="192.168.1.10",username="qbittorrent",password="dietpi",port=1340,tracker_codes=config['tracker_messages'])
+    qbit = QBIT(host=config['host'],username=config['username'],password=config['password'],port=config['port'],tracker_codes=config['tracker_messages'])
     status = qbit.check_connection()
     rich.print(f"[bold blue]Qbittorrent Version : [bold red]{status['qbit_version']}")
     rich.print(f"[bold blue]Qbittorrent WebAPI Version : [bold red]{status['qbit_version']}")
     rich.print(f"[bold blue]Torrents detected : [bold red]{len(status['torrents_info'])}")
     
-    qbit.clean_torrents(config=init_config(),dry_run=True)
+    qbit.clean_torrents(config=init_config(),dry_run=args.dr,keep_files=args.k)
 
 
 

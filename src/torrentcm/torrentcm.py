@@ -42,6 +42,7 @@ def init_config():
     else:
         data = {"tracker_messages": ["Torrent not registered with this tracker."],
                 "clients": [{"connect":False ,"type":"qbittorrent","host": "localhost", "port": 8080, "username": "admin", "password": "adminadmin"},
+                            {"connect":False ,"type":"qbittorrent","host": "localhost", "port": 8080, "username": "admin", "password": "adminadmin"}
                             ]}
         with io.open(config_file, 'w', encoding='utf8') as outfile:
             yaml.dump(data, outfile, default_flow_style=False, allow_unicode=True)
@@ -72,11 +73,10 @@ class QBIT():
             self.client.auth_log_in()
             info = {"qbit_version":self.client.app.version,"qbit_webapi_version":self.client.app.web_api_version,"build_info": self.client.app.build_info.items(),"torrents_info":self.client.torrents_info()}
             return info
-        except qbittorrentapi.LoginFailed as e:
-            raise Exception("[bold red]Qbittorrent : Could not establish connection to the WEBGUI interface.")
-    
-
-    def clean_torrents(self,config,dry_run:bool=False,keep_files:bool=False):
+        except qbittorrentapi.APIError as e:
+            rich.print(f"[bold red]{e}")
+            return False
+    def clean_torrents(self,dry_run:bool=False,keep_files:bool=False):
 
         dead = []
         table = Table()
@@ -88,7 +88,7 @@ class QBIT():
             table.add_column("[bold yellow]Size")
             for torrent in self.client.torrents_info():
                 temp = self.client.torrents_trackers(torrent_hash=torrent.hash)
-                if temp[3]['msg'] in config["tracker_messages"]:
+                if temp[3]['msg'] in self.tracker_messages:
                     dead.append(torrent.hash)
                     table.add_row("[GREEN]✓",str(torrent.hash), str(torrent.name),convert_size(torrent.size))
                 else:
@@ -113,11 +113,11 @@ def main():
     prog='Torrent Client Manager',
     description='CLI Tool to help you manage your torrents.',
     epilog='Made with ❤')
-
-    parser.add_argument('-dr', '--dry-run',
-                        action='store_true', help='Does not interact with torrent clients.')
+    
+    parser.add_argument('-dryrun',
+                        action='store_true', help='Does not interact with torrents, still contacts clients for status.')
     parser.add_argument('-k', '--keep-files',
-                        action='store_true', help='Does not delete files when removing torrents.')
+                        action='store_true', help='Does not delete files when removing torrents, used with -c or --clean, does nothing on its own.')
     parser.add_argument('-c', '--clean',
                         action='store_true', help='Removes torrents that are not registered with their trackers.')
     parser.add_argument('-autotag',
@@ -127,14 +127,38 @@ def main():
     if not config:
         rich.print("[bold red]Exiting...")
         exit()
+    else:
+        for item in config['clients']:
+            if item['connect']:
+                if item['type'] == 'qbittorrent':
+                    qbit = QBIT(host=item['host'],username=item['username'],password=item['password'],port=item['port'],tracker_codes=config['tracker_messages'])
+                    rich.print(f"Connecting to [bold blue]{item['host']}...")
+                    status = qbit.check_connection()
+                    if status == False:
+                        rich.print(f"[bold red]Failed to connect to [bold blue]{item['host']}")
+                    else:
+                        rich.print(f"[bold yellow]Sucess!")
+                        rich.print(f"Qbittorrent Version : [bold yellow]{status['qbit_version']}")
+                        rich.print(f"Qbittorrent WebAPI Version : [bold yellow]{status['qbit_version']}")
+                        rich.print(f"Torrents detected : [bold yellow]{len(status['torrents_info'])}")
+                        # Check dryrun
+                        if not args.dryrun:
+                            #check clean
+                            if args.clean:
+                                qbit.clean_torrents(dry_run=args.dr,keep_files=args.k)
+                    
+                elif item['type'] == 'deluge':
+                    pass
+                elif item['type'] == 'rutorrent':
+                    pass
+                elif item['type'] == 'rutorrent':
+                    pass
+                else:
+                    rich.print("[bold red]Error parsing client type from config file, please check your config settings.")
+                    exit()
+            else:
+                pass
     
-    qbit = QBIT(host=config['host'],username=config['username'],password=config['password'],port=config['port'],tracker_codes=config['tracker_messages'])
-    status = qbit.check_connection()
-    rich.print(f"[bold blue]Qbittorrent Version : [bold red]{status['qbit_version']}")
-    rich.print(f"[bold blue]Qbittorrent WebAPI Version : [bold red]{status['qbit_version']}")
-    rich.print(f"[bold blue]Torrents detected : [bold red]{len(status['torrents_info'])}")
-    
-    qbit.clean_torrents(config=init_config(),dry_run=args.dr,keep_files=args.k)
 
 
 
